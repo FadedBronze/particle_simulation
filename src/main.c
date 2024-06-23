@@ -75,28 +75,24 @@ typedef struct ColorStop {
    Uint8 a;
 } ColorStop;
 
-typedef struct Particle {
-  float x;
-  float y;
-  float x_velocity;
-  float y_velocity;
-  float travel_time_secs;
-} Particle;
-
 #define PI 3.14159265358979323846
 
-#define MAX_PARTICLES 1000
+#define MAX_PARTICLES 10000
+#define MAX_EMITTERS 100
 
 typedef enum EMIT_CONDITION {
-  EMIT_LIFE_END,
-  CONTINUOUS,
+  EC_LIFE_END,
+  EC_CONTINUOUS,
+  EC_SPAWN,
 } EMIT_CONDITION;
 
-typedef struct Emitter { 
-  double _running_time;
-  unsigned long _running_count;
-  int _particle_count;
+typedef enum EMIT_TYPE {
+  ET_BURST,
+  ET_CONTINOUS,
+  ET_NONE,
+} EMIT_TYPE;
 
+typedef struct EmitterConfig { 
   float origin_x;
   float origin_y;
   float start_angle_rad;
@@ -113,16 +109,29 @@ typedef struct Emitter {
   
   ColorStop color_stops[16];
   int color_stop_count;
-
-  Particle particles[MAX_PARTICLES];
-  
+ 
   EMIT_CONDITION condition;
+  EMIT_TYPE type;
 
-  struct Emitter* next_emmiter;
-} Emitter;
+  struct EmitterConfig* children;
+} EmitterConfig;
+
+typedef struct Particle {
+  float x;
+  float y;
+  float x_velocity;
+  float y_velocity;
+  float travel_time_secs;
+  
+  unsigned long emit_running_count;
+  EmitterConfig* config;
+} Particle;
 
 typedef struct ParticleSystem {
-  Emitter emitter[4];
+  Particle particles[MAX_PARTICLES];
+  EmitterConfig* config;
+  int particle_count;
+
   float origin_x;
   float origin_y;
 } ParticleSystem;
@@ -131,7 +140,7 @@ double rand01() {
   return (double)rand() / RAND_MAX;
 }
 
-void update_particles(Emitter* ps, double delta_time) {
+void update_particles(EmitterConfig* ps, double delta_time) {
   for (int i = 0; i < ps->_particle_count; i++) {
     Particle* particle = &ps->particles[i]; 
 
@@ -153,7 +162,7 @@ void update_particles(Emitter* ps, double delta_time) {
   }
 }
 
-void spawn_particles(Emitter* ps, double delta_time) {
+void spawn_particles(EmitterConfig* ps, double delta_time) {
   double range = ps->start_angle_rad - ps->end_angle_rad; 
 
   ps->_running_time += delta_time;
@@ -180,7 +189,7 @@ void spawn_particles(Emitter* ps, double delta_time) {
   }
 }
 
-void render_particles(Emitter* ps, SDL_Renderer* renderer, SDL_Texture* particle_image) {
+void render_particles(EmitterConfig* ps, SDL_Renderer* renderer, SDL_Texture* particle_image) {
   const double half_particle_size = ps->particle_size / 2.0f;
 
   int total = 0;
@@ -264,13 +273,13 @@ void render_particles(Emitter* ps, SDL_Renderer* renderer, SDL_Texture* particle
   }
 }
 
-void update_particle_system(Emitter* ps, SDL_Renderer* renderer, SDL_Texture* particle_image, double delta_time) {
+void update_particle_system(EmitterConfig* ps, SDL_Renderer* renderer, SDL_Texture* particle_image, double delta_time) {
   spawn_particles(ps, delta_time);
   update_particles(ps, delta_time);
   render_particles(ps, renderer, particle_image);
 }
 
-void init_particle_system(Emitter* ps) {
+void init_particle_system(EmitterConfig* ps) {
   //changes at runtime 
   ps->_particle_count = 0;
   ps->_running_count = 0;
@@ -314,7 +323,7 @@ int main() {
 
   SDL_Texture* texture = load_png_into_texture(renderer, "./sprites/circle.png", true, 16, 16);
 
-  Emitter particle_system;
+  EmitterConfig particle_system;
   init_particle_system(&particle_system);
 
   srand(time(NULL));
