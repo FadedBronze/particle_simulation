@@ -116,7 +116,7 @@ typedef struct Emitter {
 
   Particle particles[MAX_PARTICLES];
   
-  EMIT_CONDITION reason;
+  EMIT_CONDITION condition;
 
   struct Emitter* next_emmiter;
 } Emitter;
@@ -249,7 +249,7 @@ void render_particles(Emitter* ps, SDL_Renderer* renderer, SDL_Texture* particle
 
       SDL_SetTextureColorMod(particle_image, red, green, blue);
 
-      Uint8 alpha = ps->color_stops[next].a * max_ratio + ps->color_stops[j].a * min_ratio;
+      Uint8 alpha = ps->color_stops[next].a * min_ratio + ps->color_stops[j].a * max_ratio;
 
       SDL_SetTextureAlphaMod(particle_image, alpha); 
 
@@ -294,8 +294,8 @@ void init_particle_system(Emitter* ps) {
   ps->gravity_force = 0.0981;
 
   ColorStop a = {1, 255, 255, 255, 255};
-  ColorStop b = {1, 0, 180, 225, 255};
-  ColorStop c = {1, 0, 0, 255, 255};
+  ColorStop b = {1, 0, 180, 225, 125};
+  ColorStop c = {1, 0, 0, 255, 0};
 
   ps->color_stops[0] = a;
   ps->color_stops[1] = b;
