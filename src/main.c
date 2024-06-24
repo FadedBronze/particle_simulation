@@ -80,11 +80,6 @@ typedef struct ColorStop {
 #define MAX_PARTICLES 10000
 #define MAX_EMITTERS 100
 
-typedef enum EMIT_CONDITION {
-  EC_LIFE_END,
-  EC_LIFE_START,
-} EMIT_CONDITION;
-
 typedef enum EMIT_TYPE {
   ET_BURST,
   ET_CONTINOUS,
@@ -109,7 +104,6 @@ typedef struct EmitterConfig {
   ColorStop color_stops[16];
   int color_stop_count;
  
-  EMIT_CONDITION condition;
   EMIT_TYPE type;
 
   int sub_emmissions_count;
@@ -122,6 +116,7 @@ typedef struct Particle {
   float x_velocity;
   float y_velocity;
   float travel_time_secs;
+  float last_burst_time;
   
   unsigned long emit_count;
   EmitterConfig* emitting_config;
@@ -179,11 +174,20 @@ void spawn_particles(ParticleSystem* ps, double delta_time) {
  
     double target_spawn_frequency = particle->emitting_config->spawn_frequency;
 
+    printf(
+      "burst: %f | interval: %f | travel %f \n", 
+      particle->last_burst_time, 
+      particle_emitting_config->burst_interval, 
+      particle->travel_time_secs
+    );
+
     if (
-        particle_emitting_config->type == ET_BURST && 
-        particles_per_second + particle_emitting_config->burst_interval > target_spawn_frequency
-        ) {
-      continue;
+      particle_emitting_config->type == ET_BURST 
+    ) {
+      double time_differance = particle->last_burst_time + particle_emitting_config->burst_interval - particle->travel_time_secs;
+      if (time_differance < 0) {
+        particle->last_burst_time = particle->travel_time_secs + time_differance;
+      } else continue;
     }
 
     while (particles_per_second < target_spawn_frequency) {
@@ -292,20 +296,6 @@ void print_color_stop(const ColorStop* color_stop) {
   );
 } 
 
-void print_emit_condition(EMIT_CONDITION condition) {
-  switch (condition) {
-    case EC_LIFE_START:
-      printf("EC_LIFE_START\n");
-    break;
-    case EC_LIFE_END:
-      printf("EC_LIFE_END\n");
-    break;
-    default:
-      printf("Unhandled Case\n");
-    break;
-  }
-}
-
 void print_emit_type(EMIT_TYPE type) {
   switch (type) {
     case ET_NONE:
@@ -340,7 +330,6 @@ void print_emitter_config(const EmitterConfig* ec) {
   }
 
   print_emit_type(ec->type);
-  print_emit_condition(ec->condition);
 
   printf("child_count %i\n", ec->sub_emmissions_count);
   
@@ -355,7 +344,7 @@ void init_fireworks_base_config(EmitterConfig* ec) {
   //settings basically
   ec->max_lifetime = 2;
 
-  ec->spawn_frequency = 0.5;
+  ec->spawn_frequency = 1;
   
   ec->start_angle_rad = 0 - PI / 2;
   ec->end_angle_rad = PI / 2;
@@ -374,7 +363,6 @@ void init_fireworks_base_config(EmitterConfig* ec) {
   ec->color_stops[1] = b;
   ec->color_stops[2] = c;
 
-  ec->condition = EC_LIFE_END;
   ec->type = ET_CONTINOUS;
   
   ec->color_stop_count = 3;
@@ -382,12 +370,11 @@ void init_fireworks_base_config(EmitterConfig* ec) {
   ec->sub_emmissions = NULL;
 }
 
-
 void init_fireworks_recurse_config(EmitterConfig* ec) {
   //settings basically
   ec->max_lifetime = 1;
 
-  ec->spawn_frequency = 50;
+  ec->spawn_frequency = 10;
   
   ec->start_angle_rad = 0;
   ec->end_angle_rad = PI * 2;
@@ -406,10 +393,9 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
   ec->color_stops[1] = b;
   ec->color_stops[2] = c;
 
-  ec->condition = EC_LIFE_END;
   ec->type = ET_BURST;
 
-  ec->burst_interval = 1.9f;
+  ec->burst_interval = 1.0f;
   
   ec->color_stop_count = 3;
   ec->sub_emmissions_count = 0;
