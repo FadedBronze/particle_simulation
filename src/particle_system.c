@@ -1,5 +1,7 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
+#include <stdio.h>
+#include <string.h>
 #include "particle_system.h"
 
 double rand01() {
@@ -17,7 +19,7 @@ void update_particles(ParticleSystem* ps, double delta_time) {
     particle->y_velocity += particle->config->gravity_force * delta_time;
 
     particle->x += particle->x_velocity * delta_time * particle->config->particle_speed;
-    particle->y += particle->y_velocity * delta_time * ps->config->particle_speed;
+    particle->y += particle->y_velocity * delta_time * particle->config->particle_speed;
 
     if (particle->travel_time_secs > particle->config->max_lifetime) {
       Particle temp = ps->particles[ps->particle_count - 1];
@@ -36,45 +38,61 @@ void spawn_particles(ParticleSystem* ps, double delta_time) {
 
     if (particle->emitting_config == NULL) continue;
     if (particle->travel_time_secs == 0) continue;
-    
-    EmitterConfig* particle_emitting_config = particle->emitting_config;
 
-    double range = particle_emitting_config->start_angle_rad - particle_emitting_config->end_angle_rad; 
-    
-    double particles_per_second = particle->emit_count / particle->travel_time_secs;
- 
-    double target_spawn_frequency = particle->emitting_config->spawn_frequency;
+    for (int j = 0; j < particle->emitting_config_count; j++) {
+      EmitterConfig* particle_emitting_config = &particle->emitting_config[j];
+      ParticleEmitter* particle_emitter = &particle->emitters[j];
 
-    if (
-      particle_emitting_config->type == ET_BURST 
-    ) {
-      double time_differance = particle->last_burst_time + particle_emitting_config->burst_interval - particle->travel_time_secs;
-      if (time_differance < 0) {
-        particle->last_burst_time = particle->travel_time_secs + time_differance;
-      } else continue;
-    }
-
-    while (particles_per_second < target_spawn_frequency) {
-      double angle = rand01() * range + particle->emitting_config->start_angle_rad;
-      int type = rand01() * particle->emitting_config->sub_emmissions_count;
-
-      Particle new_particle;
-
-      new_particle.travel_time_secs = 0;
-      new_particle.y_velocity = cos(angle);
-      new_particle.x_velocity = sin(angle);
-      new_particle.x = particle->x;
-      new_particle.y = particle->y;
-      new_particle.emit_count = 0;
-      new_particle.config = particle->emitting_config;
-      new_particle.emitting_config = &particle->emitting_config->sub_emmissions[type];
-
-      ps->particles[ps->particle_count] = new_particle; 
-
-      ps->particle_count += 1;
-      particle->emit_count += 1;
+      double range = particle_emitting_config->start_angle_rad - particle_emitting_config->end_angle_rad; 
       
-      particles_per_second = particle->emit_count / particle->travel_time_secs;
+      double particles_per_second = particle_emitter->emit_count / particle->travel_time_secs;
+
+      double target_spawn_frequency = particle_emitting_config->spawn_frequency;
+
+      if (
+        particle_emitting_config->type == ET_BURST 
+      ) {
+        double time_differance = particle_emitter->last_burst_time + particle_emitting_config->burst_interval - particle->travel_time_secs;
+        if (time_differance < 0) {
+          particle_emitter->last_burst_time = particle->travel_time_secs + time_differance;
+        } else continue;
+      }
+
+      while (particles_per_second < target_spawn_frequency) {
+        double angle = rand01() * range + particle_emitting_config->start_angle_rad;
+        int type = rand01() * particle_emitting_config->sub_emmissions_count;
+
+        Particle new_particle;
+
+        new_particle.travel_time_secs = 0;
+        new_particle.y_velocity = cos(angle);
+        new_particle.x_velocity = sin(angle);
+        new_particle.x = particle->x;
+        new_particle.y = particle->y;
+        new_particle.config = particle_emitting_config;
+
+        if (particle_emitting_config->amount == EA_SINGLE) {
+          new_particle.emitting_config = &particle_emitting_config->sub_emmissions[type];
+          new_particle.emitting_config_count = 1; 
+          new_particle.emitters[0].emit_count = 0;
+          new_particle.emitters[0].last_burst_time = 0;
+        } else {
+          new_particle.emitting_config = particle_emitting_config->sub_emmissions;
+          new_particle.emitting_config_count = particle_emitting_config->sub_emmissions_count; 
+        
+          for (int k = 0; k < particle_emitting_config->sub_emmissions_count; k++) {
+            new_particle.emitters[k].emit_count = 0;
+            new_particle.emitters[k].last_burst_time = 0;
+          }
+        }
+
+        ps->particles[ps->particle_count] = new_particle; 
+
+        ps->particle_count += 1;
+        particle_emitter->emit_count += 1;
+        
+        particles_per_second = particle_emitter->emit_count / particle->travel_time_secs;
+      }
     }
   }
 }
@@ -209,8 +227,10 @@ void init_particle_system(ParticleSystem* ps, EmitterConfig* ec) {
   root_emitter.y_velocity = 0;
   root_emitter.config = NULL;
   root_emitter.emitting_config = ps->config;
-  root_emitter.emit_count = 0;
+  root_emitter.emitters[0].last_burst_time = 0;
+  root_emitter.emitters[0].emit_count = 0;
   root_emitter.travel_time_secs = 0;
+  root_emitter.emitting_config_count = 1;
 
   ps->particles[0] = root_emitter;
 }

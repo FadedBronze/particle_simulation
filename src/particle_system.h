@@ -8,6 +8,7 @@
 
 #define MAX_PARTICLES 10000
 #define MAX_EMITTERS 100
+#define MAX_EMITTERS_ON_A_PARTICLE 8 
 
 typedef struct ColorStop {
    Uint8 ratio;
@@ -23,29 +24,36 @@ typedef enum EMIT_TYPE {
   ET_NONE,
 } EMIT_TYPE;
 
+typedef enum EMIT_AMOUNT {
+  EA_ALL,
+  EA_SINGLE,
+} EMIT_AMOUNT;
+
 typedef struct EmitterConfig { 
   float start_angle_rad;
   float end_angle_rad;
-
   float max_lifetime;
-  //particles per second
   float spawn_frequency;
-
   float burst_interval;
-  
-  int particle_size;
-  
   float particle_speed;
   float gravity_force;
+
+  int particle_size;
   
   ColorStop color_stops[16];
   int color_stop_count;
- 
-  EMIT_TYPE type;
 
-  int sub_emmissions_count;
   struct EmitterConfig* sub_emmissions;
+  int sub_emmissions_count;
+
+  EMIT_TYPE type; 
+  EMIT_AMOUNT amount;
 } EmitterConfig;
+
+typedef struct {
+  float last_burst_time; 
+  unsigned long emit_count;
+} ParticleEmitter;
 
 typedef struct Particle {
   float x;
@@ -53,9 +61,10 @@ typedef struct Particle {
   float x_velocity;
   float y_velocity;
   float travel_time_secs;
-  float last_burst_time;
-  
-  unsigned long emit_count;
+
+  ParticleEmitter emitters[MAX_EMITTERS_ON_A_PARTICLE];
+
+  int emitting_config_count;
   EmitterConfig* emitting_config;
   EmitterConfig* config;
 } Particle;

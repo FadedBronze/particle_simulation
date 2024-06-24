@@ -68,19 +68,18 @@ SDL_Texture* load_png_into_texture(SDL_Renderer* renderer, const char* path, boo
 }
 
 void init_fireworks_base_config(EmitterConfig* ec) {
-  //settings basically
   ec->max_lifetime = 1;
 
-  ec->spawn_frequency = 3;
+  ec->spawn_frequency = 1;
   
   ec->start_angle_rad = 0 - PI / 2;
   ec->end_angle_rad = PI / 2;
 
   ec->particle_size = 6;
   
-  ec->particle_speed = 120;
+  ec->particle_speed = 280;
 
-  ec->gravity_force = 0.0981;
+  ec->gravity_force = 0.581;
 
   ColorStop a = {1, 255, 255, 255, 255};
   ColorStop b = {1, 255, 255, 225, 255};
@@ -89,19 +88,17 @@ void init_fireworks_base_config(EmitterConfig* ec) {
   ec->color_stops[0] = a;
   ec->color_stops[1] = b;
   ec->color_stops[2] = c;
-
-  ec->type = ET_CONTINOUS;
   
   ec->color_stop_count = 3;
-  ec->sub_emmissions_count = 0;
-  ec->sub_emmissions = NULL;
+
+  ec->type = ET_CONTINOUS;
+  ec->amount = EA_ALL;  
 }
 
 void init_fireworks_recurse_config(EmitterConfig* ec) {
-  //settings basically
   ec->max_lifetime = 1;
 
-  ec->spawn_frequency = 20;
+  ec->spawn_frequency = 40;
   
   ec->start_angle_rad = 0;
   ec->end_angle_rad = PI * 2;
@@ -110,7 +107,7 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
   
   ec->particle_speed = 180;
 
-  ec->gravity_force = 0.0981;
+  ec->gravity_force = 0;
 
   ColorStop a = {1, 255, 255, 255, 255};
   ColorStop b = {1, 255, 180, 0, 125};
@@ -121,8 +118,9 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
   ec->color_stops[2] = c;
 
   ec->type = ET_BURST;
+  ec->amount = EA_SINGLE;
 
-  ec->burst_interval = 0.999f;
+  ec->burst_interval = 0.49f;
   
   ec->color_stop_count = 3;
   ec->sub_emmissions_count = 0;
@@ -130,7 +128,6 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
 }
 
 void init_fireworks_light_config(EmitterConfig* ec) {
-  //settings basically
   ec->max_lifetime = 1;
 
   ec->spawn_frequency = 1.5;
@@ -142,7 +139,7 @@ void init_fireworks_light_config(EmitterConfig* ec) {
   
   ec->particle_speed = 0;
 
-  ec->gravity_force = 0.0981;
+  ec->gravity_force = 0;
 
   ColorStop a = {1, 125, 125, 125, 255};
   ColorStop b = {0, 125, 125, 125, 0};
@@ -152,8 +149,9 @@ void init_fireworks_light_config(EmitterConfig* ec) {
   ec->color_stop_count = 2;
 
   ec->type = ET_BURST;
+  ec->amount = EA_SINGLE;
 
-  ec->burst_interval = 0.999f;
+  ec->burst_interval = 0.90f;
   
   ec->sub_emmissions_count = 0;
   ec->sub_emmissions = NULL;
@@ -169,8 +167,6 @@ int main() {
 
   SDL_Texture* texture = load_png_into_texture(renderer, "./sprites/circle.png", true, 16, 16);
 
-  printf("");
-
   EmitterConfig emitter_config;
   EmitterConfig emitter_config_child;
   EmitterConfig emitter_config_child_2;
@@ -179,8 +175,8 @@ int main() {
   init_fireworks_light_config(&emitter_config_child_2);
 
   EmitterConfig children[2];
-  children[0] = emitter_config_child;
-  children[1] = emitter_config_child_2;
+  children[1] = emitter_config_child;
+  children[0] = emitter_config_child_2;
 
   emitter_config.sub_emmissions = children;
   emitter_config.sub_emmissions_count = 2;
