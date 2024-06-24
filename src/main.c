@@ -98,6 +98,8 @@ typedef struct EmitterConfig {
   float max_lifetime;
   //particles per second
   float spawn_frequency;
+
+  float burst_interval;
   
   int particle_size;
   
@@ -168,15 +170,22 @@ void spawn_particles(ParticleSystem* ps, double delta_time) {
 
     if (particle->emitting_config == NULL) continue;
     if (particle->travel_time_secs == 0) continue;
-
+    
     EmitterConfig* particle_emitting_config = particle->emitting_config;
 
     double range = particle_emitting_config->start_angle_rad - particle_emitting_config->end_angle_rad; 
     
     double particles_per_second = particle->emit_count / particle->travel_time_secs;
-
+ 
     double target_spawn_frequency = particle->emitting_config->spawn_frequency;
-   
+
+    if (
+        particle_emitting_config->type == ET_BURST && 
+        particles_per_second + particle_emitting_config->burst_interval > target_spawn_frequency
+        ) {
+      continue;
+    }
+
     while (particles_per_second < target_spawn_frequency) {
       double angle = rand01() * range + particle->emitting_config->start_angle_rad;
       int type = rand01() * particle->emitting_config->sub_emmissions_count;
@@ -214,7 +223,7 @@ void render_particles(ParticleSystem* ps, SDL_Renderer* renderer, SDL_Texture* p
 
     int total = 0;
 
-    for (int i = 0; i < particle_config->color_stop_count; i++) {
+    for (int i = 0; i < particle_config->color_stop_count - 1; i++) {
       total += ps->config->color_stops[i].ratio;
     }
 
@@ -227,7 +236,7 @@ void render_particles(ParticleSystem* ps, SDL_Renderer* renderer, SDL_Texture* p
     const double age = particle->travel_time_secs / particle->config->max_lifetime;
     double min_age = 0;
     
-    for (int j = 0; j < particle_config->color_stop_count; j++) {
+    for (int j = 0; j < particle_config->color_stop_count - 1; j++) {
       const double current_age_addition = particle_config->color_stops[j].ratio / (double)total;
       const double max_age = current_age_addition + min_age;
  
@@ -244,7 +253,7 @@ void render_particles(ParticleSystem* ps, SDL_Renderer* renderer, SDL_Texture* p
       const double max_ratio = scale_amount * max_delta;
       const double min_ratio = scale_amount * min_delta;
 
-      int next = (j+1) % particle_config->color_stop_count;
+      int next = j+1;
       
       Uint8 red = particle_config->color_stops[next].r * min_ratio + particle_config->color_stops[j].r * max_ratio;
       Uint8 green = particle_config->color_stops[next].g * min_ratio + particle_config->color_stops[j].g * max_ratio;
@@ -344,16 +353,16 @@ void print_emitter_config(const EmitterConfig* ec) {
 
 void init_fireworks_base_config(EmitterConfig* ec) {
   //settings basically
-  ec->max_lifetime = 10;
+  ec->max_lifetime = 2;
 
-  ec->spawn_frequency = 5;
+  ec->spawn_frequency = 0.5;
   
   ec->start_angle_rad = 0 - PI / 2;
   ec->end_angle_rad = PI / 2;
 
-  ec->particle_size = 16;
+  ec->particle_size = 6;
   
-  ec->particle_speed = 20;
+  ec->particle_speed = 120;
 
   ec->gravity_force = 0.0981;
 
@@ -378,7 +387,7 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
   //settings basically
   ec->max_lifetime = 1;
 
-  ec->spawn_frequency = 5;
+  ec->spawn_frequency = 50;
   
   ec->start_angle_rad = 0;
   ec->end_angle_rad = PI * 2;
@@ -398,7 +407,9 @@ void init_fireworks_recurse_config(EmitterConfig* ec) {
   ec->color_stops[2] = c;
 
   ec->condition = EC_LIFE_END;
-  ec->type = ET_NONE;
+  ec->type = ET_BURST;
+
+  ec->burst_interval = 1.9f;
   
   ec->color_stop_count = 3;
   ec->sub_emmissions_count = 0;
